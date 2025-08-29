@@ -19,7 +19,6 @@ Proyek ini menggunakan **Laravel 12** dengan **Filament 3** sebagai admin panel.
 
    ```bash
    composer install
-   npm install && npm run build
    ```
 
 3. **Copy file `.env` dan konfigurasi database**
