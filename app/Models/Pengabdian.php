@@ -7,25 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 class Pengabdian extends Model
 {
        protected $fillable = [
+        'tahun_ajaran',
+        'periode',
+        'user_id',
         'judul_pengabdian',
         'link_proposal',
         'link_laporan_kemajuan',
         'link_laporan_akhir',
-        'jenis_luaran',
-        'link_hki',
-        'judul_jurnal',
-        'jurnal_vol',
-        'jurnal_no',
-        'jurnal_name',
-        'tahun_jurnal',
-        'judul_buku',
-        'penerbit_buku',
-        'isbn_buku',
-        'tahun_buku',
+        'status',
+        'progres',
     ];
 
     protected $casts = [
     'jenis_luaran' => 'array',
 ];
 
+
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function luaransPengabdian()
+    {
+        return $this->hasMany(LuaranPengabdians::class);
+    }
 }

@@ -16,4 +16,14 @@ class ListPenelitians extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+
+ public function mount(): void
+    {
+        parent::mount();
+
+        // simpan query string terakhir user (page, search, filter, sort, dll.)
+        session(['last_penelitian_url' => url()->full()]);
+    }
+
+
 }

@@ -16,4 +16,13 @@ class EditPenelitian extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+
+protected function getRedirectUrl(): string
+{
+    // cek apakah ada session last url
+    return session('last_penelitian_url', $this->getResource()::getUrl('index'));
+}
+
+
 }
