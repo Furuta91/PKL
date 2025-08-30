@@ -52,13 +52,13 @@ class PenelitianResource extends Resource
                                 'Ganjil' => 'Ganjil',
                                 'Genap'  => 'Genap',
                             ])
-                            ->default(fn () => date('n') >= 7 ? 'Ganjil' : 'Genap')
+                            ->default(fn() => date('n') >= 7 ? 'Ganjil' : 'Genap')
                             ->required(),
                     ]),
 
-                        Forms\Components\Hidden::make('user_id')
-                            ->default(fn () => Auth::id())
-                            ->dehydrated(),
+                Forms\Components\Hidden::make('user_id')
+                    ->default(fn() => Auth::id())
+                    ->dehydrated(),
 
 
                 Forms\Components\TextInput::make('judul_penelitian')
@@ -69,134 +69,138 @@ class PenelitianResource extends Resource
                 Forms\Components\TextInput::make('link_proposal')
                     ->label('Link Proposal')
                     ->url()
-                    ->nullable(),
+                    ->nullable()
+                    ->reactive()
+                    ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
 
                 Forms\Components\TextInput::make('link_laporan_kemajuan')
                     ->label('Link Laporan Kemajuan')
                     ->url()
-                    ->nullable(),
+                    ->nullable()
+                    ->reactive()
+                    ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
 
                 Forms\Components\TextInput::make('link_laporan_akhir')
                     ->label('Link Laporan Akhir')
                     ->url()
-                    ->nullable(),
+                    ->nullable()
+                    ->reactive()
+                    ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
 
-Forms\Components\Hidden::make('status')
-    ->dehydrated(true)
-    ->default(fn ($get) =>
-        ($get('progres') ?? 0) >= 100 ? 'Pending' : 'In Progress'
-    )
-    ->afterStateHydrated(fn ($component, $state, $get) =>
-        $component->state(
-            ($get('progres') ?? 0) >= 100 ? 'Pending' : 'In Progress'
-        )
-    )
-    ->mutateDehydratedStateUsing(fn ($state, $get) =>
-        ($get('progres') ?? 0) >= 100 ? 'Pending' : 'In Progress'
-        ),
+                Forms\Components\Hidden::make('status')
+                    ->dehydrated(true)
+                    ->default(
+                        fn($get) => ($get('progres') ?? 0) >= 100 ? 'Pending' : 'On Progress'
+                    )
+                    ->afterStateHydrated(
+                        fn($component, $state, $get) =>
+                        $component->state(
+                            ($get('progres') ?? 0) >= 100 ? 'Pending' : 'On Progress'
+                        )
+                    )
+                    ->mutateDehydratedStateUsing(
+                        fn($state, $get) => ($get('progres') ?? 0) >= 100 ? 'Pending' : 'On Progress'
+                    ),
 
+                Forms\Components\TextInput::make('progres')
+                    ->label('Progress (%)')
+                    ->numeric()
+                    ->suffix('%')
+                    ->default(0)
+                    ->disabled()
+                    ->reactive()
+                    ->afterStateHydrated(function ($component, $state, $record, $set, $get) {
+                        self::updateProgress($component, $set, $get);
+                    }),
 
-
-
-
-Forms\Components\TextInput::make('progres')
-    ->label('Progress (%)')
-    ->numeric()
-    ->suffix('%')
-    ->default(0)
-    ->disabled()
-    ->afterStateHydrated(function ($component, $state, $record, $set) {
-        if ($record) {
-            $totalFields = 0;
-            $filled = 0;
-
-            foreach ($record->luaransPenelitian as $luaran) {
-                $fields = [
-                    $luaran->link_hki,
-                    $luaran->judul_jurnal,
-                    $luaran->jurnal_vol,
-                    $luaran->jurnal_no,
-                    $luaran->jurnal_name,
-                    $luaran->tahun_jurnal,
-                    $luaran->judul_buku,
-                    $luaran->penerbit_buku,
-                    $luaran->isbn_buku,
-                    $luaran->tahun_buku,
-                ];
-
-                $totalFields += count($fields);
-                $filled += collect($fields)->filter(fn ($val) => !empty($val))->count();
-            }
-
-            $progress = $totalFields > 0 ? round(($filled / $totalFields) * 100) : 0;
-
-            // update progres
-            $component->state($progress);
-
-            // update status ikut terset saat update progres
-            $set('status', $progress >= 100 ? 'Pending' : 'In Progress');
-        }
-    }),
-
-
-
-
-
-Forms\Components\Repeater::make('luaransPenelitian')
-    ->label('Data Luaran')
-    ->relationship('luaransPenelitian')
-    ->schema([
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\Section::make('Detail HKI')
+                Forms\Components\Repeater::make('luaransPenelitian')
+                    ->label('Data Luaran')
+                    ->relationship('luaransPenelitian')
                     ->schema([
-                        Forms\Components\Hidden::make('jenis_luaran')->default('HKI, JURNAL, BUKU'),
-                        Forms\Components\TextInput::make('link_hki')
-                            ->label('Link HKI')
-                            ->url()
-                            ->nullable(),
-                    ])
-                    ->columnSpan(2)
-                    ->collapsible(),
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Hidden::make('jenis_luaran')->default('HKI, JURNAL, BUKU'),
+                                Forms\Components\Section::make('Detail HKI')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('link_hki')
+                                            ->label('Link HKI')
+                                            ->url()
+                                            ->nullable()
+                                            ->reactive()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                    ])
+                                    ->columnSpan(2)
+                                    ->collapsible(),
 
-                Forms\Components\Section::make('Detail Jurnal')
-                    ->schema([
-                        Forms\Components\TextInput::make('judul_jurnal')->label('Judul Jurnal'),
-                        Forms\Components\TextInput::make('jurnal_vol')->label('Volume'),
-                        Forms\Components\TextInput::make('jurnal_no')->label('Nomor'),
-                        Forms\Components\TextInput::make('jurnal_name')->label('Nama Jurnal'),
-                        Forms\Components\Select::make('tahun_jurnal')
-                            ->label('Tahun Jurnal')
-                            ->options(
-                                collect(range(now()->year, 2000))
-                                    ->mapWithKeys(fn ($year) => [$year => $year])
-                            )
-                            ->searchable(),
-                    ])
-                    ->columnSpan(1)
-                    ->collapsible(),
 
-                Forms\Components\Section::make('Detail Buku')
-                    ->schema([
-                        Forms\Components\TextInput::make('judul_buku')->label('Judul Buku'),
-                        Forms\Components\TextInput::make('penerbit_buku')->label('Penerbit Buku'),
-                        Forms\Components\TextInput::make('isbn_buku')->label('ISBN Buku'),
-                        Forms\Components\Select::make('tahun_buku')
-                            ->label('Tahun Buku')
-                            ->options(
-                                collect(range(now()->year, 2000))
-                                    ->mapWithKeys(fn ($year) => [$year => $year])
-                            )
-                            ->searchable(),
+                                Forms\Components\Section::make('Detail Jurnal')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('judul_jurnal')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\TextInput::make('jurnal_vol')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\TextInput::make('jurnal_no')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\TextInput::make('jurnal_name')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\Select::make('tahun_jurnal')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get))
+                                            ->options(
+                                                collect(range(now()->year, 2000))
+                                                    ->mapWithKeys(fn($year) => [$year => $year])
+                                            )
+                                            ->searchable(),
+
+                                    ])
+                                    ->columnSpan(1)
+                                    ->collapsible(),
+
+
+                                Forms\Components\Section::make('Detail Buku')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('judul_buku')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\TextInput::make('penerbit_buku')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\TextInput::make('isbn_buku')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+                                        Forms\Components\Select::make('tahun_buku')
+                                            ->reactive()
+                                            ->nullable()
+                                            ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get))
+                                            ->options(
+                                                collect(range(now()->year, 2000))
+                                                    ->mapWithKeys(fn($year) => [$year => $year])
+                                            )
+                                            ->searchable(),
+                                    ])
+                                    ->columnSpan(1)
+                                    ->collapsible(),
+                            ]),
                     ])
-                    ->columnSpan(1)
-                    ->collapsible(),
-            ]),
-    ])
-    ->columnSpanFull()
-    ->collapsible()
-    ->disableItemCreation()
-    ->disableItemDeletion()
+                    ->columnSpanFull()
+                    ->collapsible()
+                    ->disableItemCreation()
+                    ->disableItemDeletion()
+                    ->reactive()
+                    ->afterStateUpdated(fn($state, $set, $get) => self::updateProgress(null, $set, $get)),
+
             ]);
     }
 
@@ -211,18 +215,20 @@ Forms\Components\Repeater::make('luaransPenelitian')
 
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->colors(colors: [
-                        'warning' => 'pending',
-                        'success' => 'approved',
-                        'danger'  => 'rejected',
-                        'info' => 'in progress',
-                    ]),
+                    ->color(fn(string $state): string => match ($state) {
+                        'Pending'     => 'warning',
+                        'Approved'    => 'success',
+                        'Rejected'    => 'danger',
+                        'On Progress' => 'info',
+                        default       => 'gray',
+                    }),
+
 
                 Tables\Columns\TextColumn::make('progres')
                     ->label('Progress')
-                    ->formatStateUsing(fn ($state) => $state . '%')
+                    ->formatStateUsing(fn($state) => $state . '%')
                     ->badge()
-                    ->color(fn ($state) => match (true) {
+                    ->color(fn($state) => match (true) {
                         $state < 30 => 'danger',
                         $state < 70 => 'warning',
                         default => 'success',
@@ -231,7 +237,7 @@ Forms\Components\Repeater::make('luaransPenelitian')
 
 
                 Tables\Columns\TextColumn::make('link_proposal')
-                    ->url(fn ($record) => $record->link_proposal)
+                    ->url(fn($record) => $record->link_proposal)
                     ->label('Proposal'),
             ])
             ->actions([
@@ -239,7 +245,7 @@ Forms\Components\Repeater::make('luaransPenelitian')
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
-                        ->bulkActions([
+            ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
@@ -253,5 +259,50 @@ Forms\Components\Repeater::make('luaransPenelitian')
             'create' => Pages\CreatePenelitian::route('/create'),
             'edit'   => Pages\EditPenelitian::route('/{record}/edit'),
         ];
+    }
+
+    protected static function updateProgress($component, $set, $get): void
+    {
+        $luarans = $get('luaransPenelitian') ?? [];
+
+        $totalFields = 0;
+        $filled      = 0;
+
+        // Hitung field di dalam repeater
+        foreach ($luarans as $luaran) {
+            $fields = [
+                $luaran['link_hki']        ?? null,
+                $luaran['judul_jurnal']    ?? null,
+                $luaran['jurnal_vol']      ?? null,
+                $luaran['jurnal_no']       ?? null,
+                $luaran['jurnal_name']     ?? null,
+                $luaran['tahun_jurnal']    ?? null,
+                $luaran['judul_buku']      ?? null,
+                $luaran['penerbit_buku']   ?? null,
+                $luaran['isbn_buku']       ?? null,
+                $luaran['tahun_buku']      ?? null,
+            ];
+
+            $totalFields += count($fields);
+            $filled      += collect($fields)->filter(fn($v) => filled($v))->count();
+        }
+
+        // Hitung field level-atas (bukan repeater)
+        $topLevel = [
+            $get('link_proposal'),
+            $get('link_laporan_kemajuan'),
+            $get('link_laporan_akhir'),
+        ];
+        $totalFields += count($topLevel);
+        $filled      += collect($topLevel)->filter(fn($v) => filled($v))->count();
+
+        $progress = $totalFields > 0 ? (int) round(($filled / $totalFields) * 100) : 0;
+
+        $set('progres', $progress);
+        $set('status', $progress >= 100 ? 'Pending' : 'In Progress');
+
+        if ($component) {
+            $component->state($progress);
+        }
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class LuaranPenelitians extends Model
 {
-     protected $fillable = [
+    protected $fillable = [
         'penelitian_id',
         'jenis_luaran',
         'link_hki',
@@ -21,26 +21,25 @@ class LuaranPenelitians extends Model
         'tahun_buku',
     ];
 
-     public function penelitian()
+    public function penelitian()
     {
         return $this->belongsTo(Penelitian::class);
     }
 
     // App/Models/LuaranPenelitian.php
 
-protected static function booted()
-{
-    static::saved(function ($luaran) {
-        if ($luaran->penelitian) {
-            $luaran->penelitian->recalculateProgress();
-        }
-    });
+    protected static function booted()
+    {
+        static::saved(function ($luaran) {
+            if ($luaran->penelitian) {
+                $luaran->penelitian->recalculateProgress();
+            }
+        });
 
-    static::deleted(function ($luaran) {
-        if ($luaran->penelitian) {
-            $luaran->penelitian->recalculateProgress();
-        }
-    });
-}
-
+        static::deleted(function ($luaran) {
+            if ($luaran->penelitian) {
+                $luaran->penelitian->recalculateProgress();
+            }
+        });
+    }
 }

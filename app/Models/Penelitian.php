@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Penelitian extends Model
 {
-   protected $fillable = [
+    protected $fillable = [
         'tahun_ajaran',
         'periode',
         'user_id',
@@ -19,16 +19,27 @@ class Penelitian extends Model
     ];
 
     protected $casts = [
-    'jenis_luaran' => 'array',
-];
+        'jenis_luaran' => 'array',
+    ];
+
+    // App\Models\Penelitian.php
 
     protected static function booted()
-{
-    static::saved(function ($penelitian) {
-        $totalFields = 0;
-        $filled = 0;
+    {
+        static::saved(function ($penelitian) {
+            $penelitian->recalculateProgress();
+        });
+    }
 
-        foreach ($penelitian->luaransPenelitian as $luaran) {
+    public function recalculateProgress(): void
+    {
+        $totalFields = 0;
+        $filled      = 0;
+
+        // =========================
+        // 🔹 Hitung field repeater
+        // =========================
+        foreach ($this->luaransPenelitian as $luaran) {
             $fields = [
                 $luaran->link_hki,
                 $luaran->judul_jurnal,
@@ -43,60 +54,40 @@ class Penelitian extends Model
             ];
 
             $totalFields += count($fields);
-            $filled += collect($fields)->filter(fn ($val) => !empty($val))->count();
+            $filled      += collect($fields)->filter(fn($val) => !empty($val))->count();
         }
 
-        $progress = $totalFields > 0 ? round(($filled / $totalFields) * 100) : 0;
-
-        // update ulang progres ke DB
-        $penelitian->updateQuietly([
-            'progres' => $progress,
-        ]);
-    });
-
-}
-
-// App/Models/Penelitian.php
-
-public function recalculateProgress()
-{
-    $totalFields = 0;
-    $filled = 0;
-
-    foreach ($this->luaransPenelitian as $luaran) {
-        $fields = [
-            $luaran->link_hki,
-            $luaran->judul_jurnal,
-            $luaran->jurnal_vol,
-            $luaran->jurnal_no,
-            $luaran->jurnal_name,
-            $luaran->tahun_jurnal,
-            $luaran->judul_buku,
-            $luaran->penerbit_buku,
-            $luaran->isbn_buku,
-            $luaran->tahun_buku,
+        // =========================
+        // 🔹 Hitung field top-level
+        // =========================
+        $topLevel = [
+            $this->link_proposal,
+            $this->link_laporan_kemajuan,
+            $this->link_laporan_akhir,
         ];
 
-        $totalFields += count($fields);
-        $filled += collect($fields)->filter(fn ($val) => !empty($val))->count();
+        $totalFields += count($topLevel);
+        $filled      += collect($topLevel)->filter(fn($val) => !empty($val))->count();
+
+        // =========================
+        // 🔹 Final Progress
+        // =========================
+        $progress = $totalFields > 0 ? round(($filled / $totalFields) * 100) : 0;
+
+        $this->updateQuietly([
+            'progres' => $progress,
+            'status'  => $progress >= 100 ? 'Pending' : 'On Progress',
+        ]);
     }
 
-    $progress = $totalFields > 0 ? round(($filled / $totalFields) * 100) : 0;
 
-    $this->updateQuietly(['progres' => $progress]);
-}
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
-
-
-public function user()
-{
-    return $this->belongsTo(User::class);
-}
-
-public function luaransPenelitian()
-{
-    return $this->hasMany(LuaranPenelitians::class);
-}
-
-
+    public function luaransPenelitian()
+    {
+        return $this->hasMany(LuaranPenelitians::class);
+    }
 }

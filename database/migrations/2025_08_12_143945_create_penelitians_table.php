@@ -11,19 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-           Schema::create('penelitians', function (Blueprint $table) {
+        Schema::create('penelitians', function (Blueprint $table) {
             $table->id();
-             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('tahun_ajaran');
             $table->string('periode');
             $table->string('judul_penelitian');
             $table->string('link_proposal')->nullable();
             $table->string('link_laporan_kemajuan')->nullable();
             $table->string('link_laporan_akhir')->nullable();
-            $table->enum('status', ['In Progress', 'Pending', 'Approved', 'Rejected'])
-              ->default(value: 'In Progress');
+            $table->enum('status', ['On Progress', 'Pending', 'Approved', 'Rejected'])
+                ->default(value: 'On Progress');
             $table->unsignedTinyInteger('progres')
-              ->default(0);
+                ->default(0);
             $table->timestamps();
         });
     }
